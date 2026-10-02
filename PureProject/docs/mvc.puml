@@ -1,0 +1,60 @@
+@startuml
+class Main {
+  +main(args: String[])
+}
+
+class MainView {
+  -controller: HeroController
+  -model: HeroModel
+  -lblRank: JLabel
+  -lblDetails: JLabel
+  +onModelChanged()
+}
+
+class InputDialog {
+  -txtHeight: JTextField
+  -txtWeight: JTextField
+  -txtAge: JTextField
+  -txtPullUps: JTextField
+  -txtSleep: JTextField
+  +setValues(...)
+}
+
+class HeroController {
+  -model: HeroModel
+  -inputDialog: InputDialog
+  +openInputDialog(parent: JFrame)
+  +processInput(...)
+}
+
+class HeroModel {
+  -height: double
+  -weight: double
+  -age: int
+  -pullUps: int
+  -sleepHours: double
+  -rank: String
+  -listeners: List<ModelListener>
+  +addListener(listener: ModelListener)
+  +setData(...)
+  +calculateRank()
+  -notifyListeners()
+}
+
+interface ModelListener {
+  +onModelChanged()
+}
+
+Main ..> MainView : creates
+Main ..> HeroModel : creates
+Main ..> HeroController : creates
+
+MainView --> HeroController : requests input
+MainView ..|> ModelListener : implements
+
+HeroController --> HeroModel : updates
+HeroController --> InputDialog : manages
+
+HeroModel o-- ModelListener : notifies
+HeroModel +-- ModelListener : defines
+@endluml
