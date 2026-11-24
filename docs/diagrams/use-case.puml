@@ -1,0 +1,97 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam monochrome true
+skinparam actorStyle stick
+skinparam linetype ortho
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 13
+
+skinparam rectangle {
+  BackgroundColor White
+  BorderColor Black
+  BorderThickness 2
+  FontStyle Bold
+}
+
+skinparam usecase {
+  BackgroundColor White
+  BorderColor Black
+  BorderThickness 1.2
+}
+
+skinparam actor {
+  BackgroundColor White
+  BorderColor Black
+  BorderThickness 1.2
+  FontStyle Bold
+}
+
+skinparam arrow {
+  Color Black
+  Thickness 1.2
+}
+
+actor "Пользователь" as User
+actor "Гость" as Guest
+
+rectangle "Система «CineShelf»" {
+  usecase "Просматривать каталог фильмов\n(поиск, фильтр, сортировка)" as UC_Catalog
+  usecase "Просматривать карточку фильма\nи рейтинг Топ-10" as UC_Card
+  usecase "Зарегистрироваться или войти\nв систему" as UC_Auth
+  usecase "Добавить фильм в «План\nк просмотру»" as UC_AddPlan
+  usecase "Отметить фильм\nпросмотренным" as UC_Watched
+  usecase "Выставить или изменить\nоценку и личный отзыв" as UC_Rate
+  usecase "Просматривать личную\nстатистику и списки" as UC_Stats
+
+  usecase "Проверить права и сессию\n(JWT)" as UC_CheckAuth
+  usecase "Пересчитать среднюю\nоценку фильма" as UC_Recalc
+  usecase "Убрать фильм из\n«Плана к просмотру»" as UC_RemovePlan
+
+  usecase "Управлять каталогом фильмов\n(добавить, изменить, архив)" as UC_AdminMovies
+  usecase "Управлять справочником\nжанров" as UC_AdminGenres
+  usecase "Выполнять модерацию\nоценок" as UC_AdminMod
+  usecase "Записать действие\nв журнал аудита" as UC_AuditLog
+}
+
+actor "Администратор" as Admin
+actor "База данных\nPostgreSQL" as DB
+
+' Ассоциации левых акторов (Гость и Пользователь)
+Guest --> UC_Catalog
+Guest --> UC_Card
+Guest --> UC_Auth
+
+User --> UC_Catalog
+User --> UC_Card
+User --> UC_AddPlan
+User --> UC_Watched
+User --> UC_Rate
+User --> UC_Stats
+
+' Включения (<<include>>) и расширения (<<extend>>) внутри системы
+UC_AddPlan ..> UC_CheckAuth : <<включение>>
+UC_Watched ..> UC_CheckAuth : <<включение>>
+UC_Rate ..> UC_CheckAuth : <<include>>
+UC_Stats ..> UC_CheckAuth : <<включение>>
+UC_Rate ..> UC_Recalc : <<включение>>
+
+UC_RemovePlan ..> UC_Watched : <<расширение>>
+
+UC_AdminMovies ..> UC_CheckAuth : <<включение>>
+UC_AdminGenres ..> UC_CheckAuth : <<включение>>
+UC_AdminMod ..> UC_CheckAuth : <<включение>>
+UC_AdminMod ..> UC_Recalc : <<включение>>
+
+UC_AuditLog ..> UC_AdminMovies : <<расширение>>
+UC_AuditLog ..> UC_AdminMod : <<расширение>>
+
+' Ассоциации правых акторов (Администратор и БД)
+UC_AdminMovies <-- Admin
+UC_AdminGenres <-- Admin
+UC_AdminMod <-- Admin
+
+UC_Recalc --> DB
+UC_AuditLog --> DB
+
+@enduml
