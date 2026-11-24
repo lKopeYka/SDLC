@@ -1,0 +1,71 @@
+@startuml
+skinparam shadowing false
+skinparam monochrome true
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 12
+
+skinparam activity {
+  BackgroundColor White
+  BorderColor Black
+  BorderThickness 1.2
+  DiamondBackgroundColor White
+  DiamondBorderColor Black
+}
+
+skinparam swimlane {
+  BorderColor Black
+  BorderThickness 1.5
+  TitleBackgroundColor White
+  TitleFontStyle Bold
+}
+
+skinparam arrow {
+  Color Black
+  Thickness 1.2
+}
+
+|Пользователь|
+start
+:Указать оценку (1–10) и отзыв,\nнажать «Сохранить»;
+
+|Web-интерфейс|
+:Отправить POST /api/movies/{id}/ratings\nс JWT-токеном;
+
+|Сервер (Spring Boot)|
+:Проверить JWT, роль и данные\n(оценка 1..10, отзыв <= 1000 симв.);
+if (Данные и доступ ок?) then (Нет)
+  :Вернуть 400 / 401 / 403;
+  |Web-интерфейс|
+  :Показать ошибку;
+  stop
+else (Да)
+  |PostgreSQL|
+  :Найти фильм (с version) и оценку;
+  |Сервер (Spring Boot)|
+  if (Фильм найден?) then (Нет)
+    :Вернуть 404;
+    |Web-интерфейс|
+    :Показать «Не найдено»;
+    stop
+  else (Да)
+    |Сервер (Spring Boot)|
+    :Сохранить оценку/отзыв,\nпересчитать среднюю (0,1);
+    |PostgreSQL|
+    :Обновить Movie с проверкой version;
+    if (Конфликт версий?) then (Да)
+      |Сервер (Spring Boot)|
+      :Повторить или вернуть 409;
+      |Web-интерфейс|
+      :Предложить повтор;
+      stop
+    else (Нет)
+      |Сервер (Spring Boot)|
+      :Вернуть 200 OK;
+      |Web-интерфейс|
+      :Обновить карточку и отзыв;
+      |Пользователь|
+      stop
+    endif
+  endif
+endif
+@enduml
