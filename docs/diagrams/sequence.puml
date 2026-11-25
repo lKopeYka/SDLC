@@ -1,1 +1,90 @@
+@startuml
+skinparam shadowing false
+skinparam monochrome true
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 12
 
+skinparam participant {
+  BackgroundColor White
+  BorderColor Black
+  BorderThickness 1.4
+  FontStyle Bold
+}
+
+skinparam sequence {
+  LifeLineBorderColor Black
+  LifeLineBackgroundColor White
+  ActivationBackgroundColor #E6E6E6
+  ActivationBorderColor Black
+  ArrowColor Black
+  ArrowThickness 1.3
+  GroupBorderColor Black
+  GroupBackgroundColor White
+  GroupHeaderFontStyle Bold
+  ReferenceBorderColor Black
+  ReferenceBackgroundColor White
+}
+
+mainframe sd rate_movie
+
+participant "«ui»\n**ui : MovieRatingView**" as UI
+participant "**controller : RatingController**" as Ctrl
+participant "**service : RatingService**" as Svc
+participant "«persistence»\n**repo : MovieRepository**" as Repo
+
+[-> UI : submitRating(movieId, score, note)
+activate UI
+
+UI -> Ctrl : onRateMovie(movieId, score, note)
+activate Ctrl
+
+Ctrl -> Svc : rateMovie(userId, movieId, score, note)
+activate Svc
+
+Svc -> Svc : avg := calcAvg(score, avg, count)
+activate Svc
+deactivate Svc
+
+alt [score in 1..10 && note.length <= 1000]
+  Svc -> Svc : applyRating(rating, avg)
+  activate Svc
+  deactivate Svc
+
+  Svc -> UI : ratingUpdated(avg)
+  activate UI
+  deactivate UI
+
+  Svc --> Ctrl : true
+  Ctrl --> UI : 200 OK
+  [o<-- UI : renderRating  .
+else [else]
+  Svc --> Ctrl : false
+  Ctrl --> UI : 400 / 409
+  deactivate Ctrl
+  [o<-- UI : showError .
+  deactivate UI
+end
+
+deactivate Svc
+
+[-> Ctrl : <<async>> recalcSnapshot(movieId)
+activate Ctrl
+
+Ctrl -> Repo : saveMovieWithVersion(movie, avg)
+activate Repo
+
+create participant "«tx»\n**tx : RatingTx**" as Tx
+Repo -> Tx : <<create>> beginTx()
+activate Tx
+Repo -> Tx : flushAndCheckVersion(version)
+Tx --> Repo : versionOk
+Repo -> Tx : <<destroy>> commitTx()
+destroy Tx
+
+Repo --> Ctrl : avgUpdated
+deactivate Repo
+deactivate Ctrl
+
+ref over UI, Ctrl, Svc, Repo : Handle Optimistic Lock Conflict
+
+@enduml
